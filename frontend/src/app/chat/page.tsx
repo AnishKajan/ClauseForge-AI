@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChatPanel } from '../../components/ChatPanel'
-import { DocumentManager } from '../../components/DocumentManager'
-import { Citation } from '../../types'
+import { ChatPanel } from '@/components/ChatPanel'
+import { DocumentManager } from '@/components/DocumentManager'
+import { Citation } from '@/types'
 
 export default function ChatPage() {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([])

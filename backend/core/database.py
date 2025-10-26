@@ -2,6 +2,7 @@
 Database configuration and connection management
 """
 
+from __future__ import annotations
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import NullPool, QueuePool
@@ -9,22 +10,49 @@ from sqlalchemy import text, event
 from sqlalchemy.engine import Engine
 import logging
 import asyncio
+import os
 
 from .config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def make_engine(database_url: str, *, use_null_pool: bool | None = None):
+    """
+    Creates an engine with sane defaults.
+    - In tests (ENVIRONMENT=test) or if use_null_pool=True: use NullPool (no pool args).
+    - Otherwise: QueuePool with pool_size/max_overflow and pool_pre_ping.
+    """
+    env = os.getenv("ENVIRONMENT", "").lower()
+    null_pool = use_null_pool if use_null_pool is not None else (env == "test")
+    
+    if null_pool:
+        # Do NOT pass pool_size/max_overflow with NullPool
+        return create_async_engine(
+            database_url,
+            poolclass=NullPool,
+            future=True,
+            echo=settings.DEBUG,
+            echo_pool=settings.DEBUG,
+        )
+    else:
+        pool_size = int(os.getenv("DB_POOL_SIZE", str(getattr(settings, 'DATABASE_POOL_SIZE', 5))))
+        max_overflow = int(os.getenv("DB_MAX_OVERFLOW", str(getattr(settings, 'DATABASE_MAX_OVERFLOW', 10))))
+        return create_async_engine(
+            database_url,
+            pool_pre_ping=True,
+            poolclass=QueuePool,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_recycle=3600,   # Recycle connections after 1 hour
+            future=True,
+            echo=settings.DEBUG,
+            echo_pool=settings.DEBUG,
+        )
+
+
 # Create async engine with proper connection pooling
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    poolclass=NullPool if settings.ENVIRONMENT == "test" else QueuePool,
-    pool_pre_ping=True,  # Validate connections before use
-    pool_recycle=3600,   # Recycle connections after 1 hour
-    echo=settings.DEBUG,
-    echo_pool=settings.DEBUG,
-)
+engine = make_engine(settings.DATABASE_URL)
 
 # Create session factory
 AsyncSessionLocal = async_sessionmaker(

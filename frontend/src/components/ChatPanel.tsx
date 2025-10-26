@@ -3,13 +3,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
-import { api } from '../lib/api'
+import { api } from '@/lib/api'
 import { 
   Citation, 
   RAGQueryRequest, 
   RAGQueryResponse, 
   ChatMessage 
-} from '../types'
+} from '@/types'
 
 // Types are now imported from ../types
 

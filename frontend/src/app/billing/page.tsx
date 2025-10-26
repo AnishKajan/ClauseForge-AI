@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Navigation from '../../components/Navigation';
-import BillingCard from '../../components/BillingCard';
-import UsageDashboard from '../../components/UsageDashboard';
-import { Button } from '../../components/ui/button';
+import Navigation from '@/components/Navigation';
+import BillingCard from '@/components/BillingCard';
+import UsageDashboard from '@/components/UsageDashboard';
+import { Button } from '@/components/ui/button';
 
 export default function BillingPage() {
   const [activeTab, setActiveTab] = useState<'usage' | 'plans' | 'payment'>('usage');

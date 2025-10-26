@@ -3,6 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Stripe from 'stripe'
 
+type CheckoutBody = { 
+  priceId?: string
+  [k: string]: unknown 
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(request: NextRequest) {
@@ -16,7 +21,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { priceId } = await request.json()
+    const body = (await request.json()) as CheckoutBody
+    const { priceId } = body
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
     if (!finalPriceId) {
@@ -40,8 +46,8 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXTAUTH_URL}/pricing?canceled=true`,
       customer_email: session.user.email,
       metadata: {
-        userId: session.user.id,
-        orgId: session.user.orgId || 'default',
+        userId: (session.user as any).id || session.user.email,
+        orgId: (session.user as any).orgId || 'default',
       },
     })
 
