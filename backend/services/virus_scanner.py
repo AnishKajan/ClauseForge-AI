@@ -7,6 +7,7 @@ import tempfile
 import logging
 import subprocess
 import asyncio
+import json
 from typing import Optional, Dict, Any
 from pathlib import Path
 import boto3

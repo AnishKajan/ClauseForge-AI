@@ -5,7 +5,7 @@ Usage monitoring and limits enforcement middleware
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import structlog
 from datetime import date, datetime, timedelta
 

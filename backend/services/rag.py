@@ -338,8 +338,7 @@ def create_semantic_search_service(
         embedding_service=embedding_service
     )
 
-class
- ClaudeAPIService:
+class ClaudeAPIService:
     """Service for integrating with Anthropic Claude API for response generation."""
     
     def __init__(self):
