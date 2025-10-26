@@ -3,7 +3,7 @@ LexiScan AI Contract Analyzer - FastAPI Backend
 Main application entry point
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from contextlib import asynccontextmanager
@@ -16,6 +16,7 @@ from core.database import engine, Base
 from core.middleware import setup_middleware
 from core.telemetry import telemetry_service
 from core.logging_config import setup_logging
+from auth import verify_bearer
 
 # Setup structured logging
 setup_logging()
@@ -63,6 +64,15 @@ app = FastAPI(
 # Setup middleware
 setup_middleware(app)
 
+# Add CORS middleware for Azure AD integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://YOUR_DOMAIN.com"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
+
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
@@ -86,6 +96,11 @@ async def root():
         "version": "0.1.0",
         "docs": "/docs"
     }
+
+
+@app.get("/api/secure")
+def secure(user = Depends(verify_bearer)):
+    return {"message": "ok", "user": {"sub": user.get("sub"), "email": user.get("preferred_username")}}
 
 
 if __name__ == "__main__":

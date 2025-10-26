@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Logo } from '@/components/ui/logo'
+import { BackNavigation } from '@/components/BackNavigation'
 import { Check } from 'lucide-react'
 
 export default function PricingPage() {
@@ -79,6 +80,7 @@ export default function PricingPage() {
       {/* Pricing Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
+          <BackNavigation href="/" label="Back to Home" />
           <div className="text-center mb-16">
             <h1 className="text-4xl font-bold text-clauseforge-primary mb-4 font-legal">
               Simple, Transparent Pricing

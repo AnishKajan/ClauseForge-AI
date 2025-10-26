@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Logo } from '@/components/ui/logo'
+import { BackNavigation } from '@/components/BackNavigation'
 import { Mail, Lock, User } from 'lucide-react'
 
 export default function SignupPage() {
@@ -71,7 +72,9 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-gray-200 shadow-lg">
+      <div className="w-full max-w-md">
+        <BackNavigation href="/" label="Back to Home" />
+        <Card className="w-full border-gray-200 shadow-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-6">
             <Logo iconOnly={true} size={48} />
@@ -156,6 +159,7 @@ export default function SignupPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

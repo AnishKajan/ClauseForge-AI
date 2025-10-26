@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Logo } from '@/components/ui/logo'
-import { FileText, ArrowLeft, Shield } from 'lucide-react'
+import { BackNavigation } from '@/components/BackNavigation'
+import { FileText, Shield } from 'lucide-react'
 
 export default function RiskFeaturePage() {
   return (
@@ -27,12 +28,7 @@ export default function RiskFeaturePage() {
 
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
-          <Button variant="ghost" asChild className="mb-8">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Link>
-          </Button>
+          <BackNavigation href="/" label="Back to Home" />
 
           <div className="text-center mb-12">
             <Shield className="h-16 w-16 text-green-600 mx-auto mb-6" />

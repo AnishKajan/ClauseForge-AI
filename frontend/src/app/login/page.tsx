@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Logo } from '@/components/ui/logo'
+import { BackNavigation } from '@/components/BackNavigation'
 import { Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
@@ -45,9 +46,21 @@ export default function LoginPage() {
     }
   }
 
+  const handleMicrosoftSignIn = async () => {
+    setIsLoading(true)
+    try {
+      await signIn('azure-ad', { callbackUrl })
+    } catch (error) {
+      setError('Microsoft sign-in failed. Please try again.')
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-gray-200 shadow-lg">
+      <div className="w-full max-w-md">
+        <BackNavigation href="/" label="Back to Home" />
+        <Card className="w-full border-gray-200 shadow-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-6">
             <Logo iconOnly={true} size={48} />
@@ -106,6 +119,33 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-clauseforge-primary/70 font-legal">Or continue with</span>
+              </div>
+            </div>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4 border-gray-200 text-clauseforge-primary hover:bg-clauseforge-primary/5 font-legal"
+              onClick={handleMicrosoftSignIn}
+              disabled={isLoading}
+            >
+              <svg className="w-4 h-4 mr-2" viewBox="0 0 23 23">
+                <path fill="#f35325" d="M1 1h10v10H1z"/>
+                <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                <path fill="#ffba08" d="M12 12h10v10H12z"/>
+              </svg>
+              Sign in with Microsoft
+            </Button>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-sm text-clauseforge-primary/70 font-legal">
               Don't have an account?{' '}
@@ -116,6 +156,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

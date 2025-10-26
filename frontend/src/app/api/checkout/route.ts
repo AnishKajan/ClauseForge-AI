@@ -5,11 +5,11 @@ import Stripe from 'stripe'
 import { z } from 'zod'
 
 const BodySchema = z.object({
+  priceId: z.string().optional(),
   user: z.object({
     id: z.string(),
     email: z.string().email().optional(),
   }).optional(),
-  priceId: z.string().optional(),
 })
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)

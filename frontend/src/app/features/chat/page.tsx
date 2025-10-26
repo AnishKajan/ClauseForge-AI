@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
-import { FileText, ArrowLeft, Zap } from 'lucide-react'
+import { BackNavigation } from '@/components/BackNavigation'
+import { FileText, Zap } from 'lucide-react'
 
 export default function ChatFeaturePage() {
   return (
@@ -26,12 +27,7 @@ export default function ChatFeaturePage() {
 
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
-          <Button variant="ghost" asChild className="mb-8">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Link>
-          </Button>
+          <BackNavigation href="/" label="Back to Home" />
 
           <div className="text-center mb-12">
             <Zap className="h-16 w-16 text-yellow-600 mx-auto mb-6" />
