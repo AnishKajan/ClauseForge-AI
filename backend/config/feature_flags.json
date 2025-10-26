@@ -1,0 +1,105 @@
+{
+  "flags": [
+    {
+      "key": "new_ui_dashboard",
+      "name": "New UI Dashboard",
+      "description": "Enable the redesigned dashboard interface",
+      "flag_type": "boolean",
+      "default_value": true,
+      "enabled": true,
+      "rollout_strategy": "percentage",
+      "rollout_percentage": 25.0,
+      "target_users": [],
+      "target_orgs": []
+    },
+    {
+      "key": "advanced_analytics",
+      "name": "Advanced Analytics",
+      "description": "Enable advanced analytics and reporting features",
+      "flag_type": "boolean",
+      "default_value": true,
+      "enabled": true,
+      "rollout_strategy": "org_list",
+      "rollout_percentage": 100.0,
+      "target_users": [],
+      "target_orgs": ["enterprise-org-1", "beta-org-2"]
+    },
+    {
+      "key": "claude_opus_model",
+      "name": "Claude Opus Model",
+      "description": "Enable Claude Opus model for premium users",
+      "flag_type": "boolean",
+      "default_value": true,
+      "enabled": true,
+      "rollout_strategy": "gradual",
+      "rollout_percentage": 10.0,
+      "target_users": [],
+      "target_orgs": []
+    },
+    {
+      "key": "document_comparison_v2",
+      "name": "Document Comparison V2",
+      "description": "Enable the new document comparison engine",
+      "flag_type": "boolean",
+      "default_value": true,
+      "enabled": false,
+      "rollout_strategy": "user_list",
+      "rollout_percentage": 100.0,
+      "target_users": ["beta-user-1", "beta-user-2"],
+      "target_orgs": []
+    },
+    {
+      "key": "max_document_size",
+      "name": "Maximum Document Size",
+      "description": "Maximum document size in MB for uploads",
+      "flag_type": "number",
+      "default_value": 50.0,
+      "enabled": true,
+      "rollout_strategy": "all_users",
+      "rollout_percentage": 100.0,
+      "target_users": [],
+      "target_orgs": []
+    },
+    {
+      "key": "ai_model_config",
+      "name": "AI Model Configuration",
+      "description": "Configuration for AI model selection and parameters",
+      "flag_type": "json",
+      "default_value": {
+        "embedding_model": "text-embedding-3-large",
+        "llm_model": "claude-3-sonnet-20240229",
+        "temperature": 0.1,
+        "max_tokens": 4000
+      },
+      "enabled": true,
+      "rollout_strategy": "all_users",
+      "rollout_percentage": 100.0,
+      "target_users": [],
+      "target_orgs": []
+    },
+    {
+      "key": "maintenance_mode",
+      "name": "Maintenance Mode",
+      "description": "Enable maintenance mode banner",
+      "flag_type": "boolean",
+      "default_value": false,
+      "enabled": false,
+      "rollout_strategy": "all_users",
+      "rollout_percentage": 100.0,
+      "target_users": [],
+      "target_orgs": []
+    },
+    {
+      "key": "beta_features",
+      "name": "Beta Features",
+      "description": "Enable access to beta features",
+      "flag_type": "boolean",
+      "default_value": true,
+      "enabled": true,
+      "rollout_strategy": "user_list",
+      "rollout_percentage": 100.0,
+      "target_users": ["admin-user", "beta-tester-1"],
+      "target_orgs": []
+    }
+  ]
+}
