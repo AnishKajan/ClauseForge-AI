@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FileText, Mail, Lock, User } from 'lucide-react'
+import { Logo } from '@/components/ui/logo'
+import { Mail, Lock, User } from 'lucide-react'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -72,9 +73,8 @@ export default function SignupPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <FileText className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">ClauseForge</span>
+          <div className="flex justify-center mb-4">
+            <Logo useFavicon={true} />
           </div>
           <CardTitle>Create Account</CardTitle>
           <CardDescription>

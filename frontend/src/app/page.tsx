@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Logo } from '@/components/ui/logo'
 import { FileText, Shield, Zap, Users } from 'lucide-react'
 import Link from 'next/link'
 
@@ -10,9 +11,8 @@ export default function HomePage() {
       <header className="border-b bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2">
-              <FileText className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">ClauseForge</span>
+            <Link href="/">
+              <Logo useFavicon={true} />
             </Link>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" asChild className="transition-colors hover:bg-gray-100">
@@ -109,10 +109,7 @@ export default function HomePage() {
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-6 w-6" />
-              <span className="text-xl font-bold">ClauseForge</span>
-            </div>
+            <Logo useFavicon={true} size={24} />
             <p className="text-gray-400">
               © 2024 ClauseForge. All rights reserved.
             </p>

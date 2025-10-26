@@ -5,6 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Logo } from '@/components/ui/logo'
 import { FileText, Upload, MessageSquare, Users, Settings, LogOut } from 'lucide-react'
 
 interface HealthStatus {
@@ -53,9 +54,8 @@ export default function DashboardPage() {
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2">
-              <FileText className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">ClauseForge</span>
+            <Link href="/">
+              <Logo useFavicon={true} />
             </Link>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">

@@ -8,6 +8,7 @@ import { useDropzone } from 'react-dropzone'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { Logo } from '@/components/ui/logo'
 import { FileText, Upload, X, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface UploadStatus {
@@ -97,9 +98,8 @@ export default function UploadPage() {
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2">
-              <FileText className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">ClauseForge</span>
+            <Link href="/">
+              <Logo useFavicon={true} />
             </Link>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" asChild>
