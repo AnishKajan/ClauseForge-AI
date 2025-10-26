@@ -14,8 +14,6 @@ const BodySchema = z.object({
     .optional(),
 })
 
-type Body = z.infer<typeof BodySchema>
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(req: Request) {
@@ -29,8 +27,13 @@ export async function POST(req: Request) {
       )
     }
 
-    const bodyUnknown = (await req.json()) as unknown
-    const { user, priceId } = BodySchema.parse(bodyUnknown)
+    // Parse and validate request body
+    const rawBody = await req.json()
+    const validatedBody = BodySchema.parse(rawBody)
+    
+    // Extract validated fields with explicit typing
+    const priceId: string | undefined = validatedBody.priceId
+    const user: { id: string; email?: string } | undefined = validatedBody.user
     
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
