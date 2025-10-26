@@ -1,4 +1,4 @@
-# LexiScan AI Contract Analyzer
+# ClauseForge AI Contract Analyzer
 
 An enterprise-grade AI platform that helps lawyers, compliance officers, and businesses analyze, compare, and summarize contracts using Retrieval-Augmented Generation (RAG) powered by pgvector, LangChain, and Claude.
 
