@@ -1,406 +1,197 @@
-# LexiScan Deployment Guide
+# ClauseForge Azure Deployment Guide
 
-This guide covers deploying LexiScan to AWS using Terraform and CI/CD pipelines.
+## Overview
 
-## Prerequisites
+ClauseForge is deployed on Azure using the following architecture:
+- **Backend**: Azure Container Apps (ACA) with images from Azure Container Registry (ACR)
+- **Frontend**: Azure Static Web Apps (SWA) with static export from Next.js
+- **Database**: Azure PostgreSQL Flexible Server
+- **Storage**: Azure Blob Storage
+- **Secrets**: Azure Key Vault
 
-### Required Tools
-- [AWS CLI](https://aws.amazon.com/cli/) v2.0+
-- [Terraform](https://www.terraform.io/) v1.6+
-- [Docker](https://www.docker.com/) v20.0+
-- [Node.js](https://nodejs.org/) v18+
-- [Python](https://www.python.org/) v3.11+
+## Azure Resources
 
-### AWS Setup
-1. Configure AWS credentials:
-   ```bash
-   aws configure
-   ```
+### Resource Group: `clauseforge-prod`
+- **Location**: East US 2
+- **Container Registry**: `clauseforgeacr`
+- **Container App**: `clauseforge-api`
+- **Key Vault**: `clauseforge-kv`
 
-2. Create S3 buckets for Terraform state:
-   ```bash
-   aws s3 mb s3://lexiscan-terraform-state-staging
-   aws s3 mb s3://lexiscan-terraform-state-production
-   ```
+### Key Vault Secrets
+The following secrets must be configured in Azure Key Vault (`clauseforge-kv`):
 
-3. Create DynamoDB tables for state locking:
-   ```bash
-   aws dynamodb create-table \
-     --table-name lexiscan-terraform-locks-staging \
-     --attribute-definitions AttributeName=LockID,AttributeType=S \
-     --key-schema AttributeName=LockID,KeyType=HASH \
-     --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+| Secret Name | Description | Example |
+|-------------|-------------|---------|
+| `database-url` | PostgreSQL connection string | `postgresql://user:pass@server.postgres.database.azure.com:5432/clauseforge` |
+| `storage-conn` | Azure Storage connection string | `DefaultEndpointsProtocol=https;AccountName=...` |
+| `stripe-secret-key` | Stripe API secret key | `sk_live_...` |
+| `claude-api-key` | Anthropic Claude API key | `sk-ant-...` |
 
-   aws dynamodb create-table \
-     --table-name lexiscan-terraform-locks-production \
-     --attribute-definitions AttributeName=LockID,AttributeType=S \
-     --key-schema AttributeName=LockID,KeyType=HASH \
-     --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
-   ```
+## GitHub Secrets
 
-## Environment Configuration
+The following secrets must be configured in GitHub repository settings:
 
-### Staging Environment
-- **Purpose**: Testing and validation
-- **Resources**: Minimal (t3.micro instances)
-- **Domain**: staging.lexiscan.ai (optional)
-- **Monitoring**: Basic CloudWatch
+| Secret Name | Description | Example |
+|-------------|-------------|---------|
+| `AZURE_CREDENTIALS` | Azure service principal credentials | JSON object with clientId, clientSecret, etc. |
+| `PROD_API_URL` | Container App FQDN | `https://clauseforge-api.azurecontainerapps.io` |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | SWA deployment token | Generated from Azure portal |
 
-### Production Environment
-- **Purpose**: Live application
-- **Resources**: Production-ready (t3.small+ instances)
-- **Domain**: lexiscan.ai
-- **Monitoring**: Full observability stack
-- **Backup**: 7-day retention
+## Deployment Pipeline
 
-## Deployment Methods
+### Triggers
+- **Main branch**: Deploys to production
+- **Pull requests**: Runs tests and security scans only
 
-### 1. Automated CI/CD (Recommended)
+### Pipeline Steps
+1. **Tests**: Backend (Python) and Frontend (Node.js) tests
+2. **Security Scan**: Trivy vulnerability scanner
+3. **Build**: ACR builds for both backend and frontend images
+4. **Deploy Backend**: Updates Container App with new image and secret references
+5. **Deploy Frontend**: Builds and deploys to Static Web Apps
 
-The GitHub Actions pipeline automatically deploys on:
-- **Staging**: Push to `develop` branch
-- **Production**: Push to `main` branch
+### Environment Variables in Container App
 
-#### Required GitHub Secrets
-```bash
-# AWS Configuration
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_ACCOUNT_ID
-
-# Application Secrets
-JWT_SECRET
-ANTHROPIC_API_KEY
-OPENAI_API_KEY
-STRIPE_SECRET_KEY
-
-# Monitoring
-ALERT_EMAIL
-
-# Domain (production only)
-DOMAIN_NAME
-```
-
-#### Pipeline Stages
-1. **Test**: Run backend and frontend tests
-2. **Security**: Vulnerability scanning with Trivy
-3. **Build**: Create and push Docker images to ECR
-4. **Deploy**: Apply Terraform infrastructure
-5. **Verify**: Run smoke tests
-6. **Rollback**: Automatic rollback on failure
-
-### 2. Manual Deployment
-
-Use the deployment script for manual deployments:
+The Container App uses secret references (not direct Key Vault references):
 
 ```bash
-# Deploy to staging
-./scripts/deploy.sh -e staging
-
-# Deploy to production
-./scripts/deploy.sh -e production
-
-# Dry run (show plan without applying)
-./scripts/deploy.sh -e staging --dry-run
-
-# Skip tests and build (use existing images)
-./scripts/deploy.sh -e production --skip-tests --skip-build
+DATABASE_URL=secretref:database-url
+AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn
+STRIPE_SECRET_KEY=secretref:stripe-secret-key
+CLAUDE_API_KEY=secretref:claude-api-key
+ENVIRONMENT=production
+PORT=8000
 ```
 
-### 3. Direct Terraform
+## Adding New Secrets
 
-For advanced users who want full control:
-
+### 1. Add to Azure Key Vault
 ```bash
-cd infrastructure/terraform
-
-# Initialize
-terraform init -backend-config=backend-config/staging.hcl
-
-# Plan
-terraform plan -var-file=environments/staging.tfvars
-
-# Apply
-terraform apply -var-file=environments/staging.tfvars
+az keyvault secret set \
+  --vault-name clauseforge-kv \
+  --name "new-secret-name" \
+  --value "secret-value"
 ```
 
-## Infrastructure Components
-
-### Core Services
-- **ECS Fargate**: Container orchestration
-- **Application Load Balancer**: Traffic distribution
-- **RDS PostgreSQL**: Primary database with pgvector
-- **ElastiCache Redis**: Caching and rate limiting
-- **S3**: Document storage
-- **SQS**: Asynchronous processing queues
-
-### Security
-- **VPC**: Network isolation
-- **Security Groups**: Firewall rules
-- **WAF**: Web application firewall
-- **Secrets Manager**: Secure credential storage
-- **IAM**: Fine-grained permissions
-
-### Monitoring
-- **CloudWatch**: Logs and metrics
-- **OpenTelemetry**: Distributed tracing
-- **Health Checks**: Service availability monitoring
-- **Alarms**: Automated alerting
-
-### Optional Components
-- **Route53**: DNS management
-- **ACM**: SSL certificates
-- **Lambda**: Virus scanning functions
-
-## Configuration
-
-### Environment Variables
-
-#### Backend Configuration
+### 2. Update Container App Secret Reference
 ```bash
-# Database
-DATABASE_URL=postgresql://user:pass@host:5432/db
-REDIS_URL=redis://host:6379/0
-
-# AI Services
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-EMBEDDING_PROVIDER=openai
-LLM_PROVIDER=anthropic
-
-# AWS Services
-AWS_REGION=us-east-1
-S3_BUCKET_NAME=lexiscan-documents-prod
-SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/...
-
-# Security
-JWT_SECRET=your-secret-key
-SECRET_KEY=your-app-secret
-
-# Monitoring
-OTEL_EXPORTER_OTLP_ENDPOINT=https://...
-ENABLE_AUDIT_LOGGING=true
+az containerapp secret set \
+  -g clauseforge-prod \
+  -n clauseforge-api \
+  --secrets "new-secret-name=keyvaultref:https://clauseforge-kv.vault.azure.net/secrets/new-secret-name,identityref:/subscriptions/{subscription-id}/resourceGroups/clauseforge-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identity-name}"
 ```
 
-#### Frontend Configuration
+### 3. Update Environment Variable
 ```bash
-# API Configuration
-NEXT_PUBLIC_API_URL=https://api.lexiscan.ai
-NEXT_PUBLIC_APP_URL=https://lexiscan.ai
-
-# Authentication
-NEXTAUTH_URL=https://lexiscan.ai
-NEXTAUTH_SECRET=your-nextauth-secret
-
-# Monitoring
-NEXT_PUBLIC_SENTRY_DSN=https://...
+az containerapp update \
+  -g clauseforge-prod \
+  -n clauseforge-api \
+  --set-env-vars "NEW_ENV_VAR=secretref:new-secret-name"
 ```
 
-### Terraform Variables
+## Rollback Procedures
 
-Key variables in `environments/*.tfvars`:
+### Container App Rollback
+```bash
+# List revisions
+az containerapp revision list \
+  -g clauseforge-prod \
+  -n clauseforge-api \
+  --query "[].{Name:name,Active:properties.active,CreatedTime:properties.createdTime}" \
+  -o table
 
-```hcl
-# Environment
-environment = "production"
-aws_region  = "us-east-1"
-
-# Networking
-vpc_cidr = "10.1.0.0/16"
-
-# Database
-db_instance_class = "db.t3.small"
-db_allocated_storage = 100
-
-# Compute
-backend_cpu = 512
-backend_memory = 1024
-backend_desired_count = 2
-
-# Domain
-domain_name = "lexiscan.ai"
+# Activate previous revision
+az containerapp revision activate \
+  -g clauseforge-prod \
+  -n clauseforge-api \
+  --revision <previous-revision-name>
 ```
 
-## Monitoring and Observability
+### Static Web App Rollback
+Static Web Apps automatically maintain deployment history. Rollback through Azure portal:
+1. Go to Azure Static Web Apps resource
+2. Navigate to "Deployment history"
+3. Select previous deployment and activate
 
-### Health Checks
-- **Basic**: `/api/health`
-- **Detailed**: `/api/health/detailed`
-- **Readiness**: `/api/ready`
-- **Liveness**: `/api/live`
-- **Metrics**: `/api/metrics`
+## Monitoring and Health Checks
 
-### Logging
-- **Format**: Structured JSON logs
-- **Destination**: CloudWatch Logs
-- **Retention**: 30 days (configurable)
-- **Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+### Health Endpoints
+- **Basic Health**: `https://clauseforge-api.azurecontainerapps.io/api/health`
+- **Detailed Health**: `https://clauseforge-api.azurecontainerapps.io/api/health/detailed`
 
-### Metrics
-- **Business KPIs**: Document uploads, analyses, queries
-- **System Metrics**: CPU, memory, disk, network
-- **Application Metrics**: Response times, error rates
-- **Custom Metrics**: OpenTelemetry integration
+### Container App Logs
+```bash
+# View logs
+az containerapp logs show \
+  -g clauseforge-prod \
+  -n clauseforge-api \
+  --follow
 
-### Alerting
-- **High Error Rate**: >5% error rate for 5 minutes
-- **High Response Time**: >2s P95 for 5 minutes
-- **Resource Usage**: >80% CPU/memory for 10 minutes
-- **Service Unavailable**: Health check failures
-
-## Security Considerations
-
-### Network Security
-- Private subnets for application and database
-- Security groups with minimal required access
-- VPC endpoints for AWS service communication
-- WAF rules for common attack patterns
-
-### Data Security
-- Encryption at rest (S3, RDS, EBS)
-- Encryption in transit (TLS 1.2+)
-- Secrets stored in AWS Secrets Manager
-- Regular security scanning with Trivy
-
-### Access Control
-- IAM roles with least privilege
-- Multi-factor authentication for AWS console
-- Service-to-service authentication with IAM roles
-- API rate limiting and authentication
-
-### Compliance
-- Audit logging for all user actions
-- Data retention policies
-- GDPR/CCPA compliance features
-- SOC 2 Type II controls
+# View specific revision logs
+az containerapp revision show \
+  -g clauseforge-prod \
+  -n clauseforge-api \
+  --revision <revision-name>
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Deployment Failures
+1. **Secret Reference Errors**
+   - Ensure secrets exist in Key Vault
+   - Verify Container App has managed identity with Key Vault access
+   - Check secret reference format: `secretref:secret-name`
+
+2. **Image Pull Errors**
+   - Verify ACR access permissions
+   - Check image exists: `az acr repository show-tags --name clauseforgeacr --repository clauseforge-api`
+
+3. **Static Web App Build Failures**
+   - Check Next.js configuration for static export
+   - Verify environment variables are set correctly
+   - Review build logs in GitHub Actions
+
+### Debug Commands
+
 ```bash
-# Check Terraform state
-terraform show
+# Check Container App status
+az containerapp show -g clauseforge-prod -n clauseforge-api --query "properties.provisioningState"
 
-# View ECS service events
-aws ecs describe-services --cluster lexiscan-prod-cluster --services lexiscan-prod-backend
+# List Container App secrets
+az containerapp secret list -g clauseforge-prod -n clauseforge-api
 
-# Check CloudWatch logs
-aws logs tail /aws/ecs/lexiscan-backend --follow
+# Check Key Vault access
+az keyvault secret list --vault-name clauseforge-kv
+
+# Test Container App endpoint
+curl -f https://clauseforge-api.azurecontainerapps.io/api/health
 ```
 
-#### Application Issues
-```bash
-# Check health endpoints
-curl https://api.lexiscan.ai/health/detailed
+## Security Considerations
 
-# View application logs
-aws logs filter-log-events --log-group-name /aws/ecs/lexiscan-backend --filter-pattern "ERROR"
+1. **Managed Identity**: Container App uses managed identity for Key Vault access
+2. **Network Security**: Container App ingress is configured for HTTPS only
+3. **Secret Rotation**: Secrets should be rotated regularly
+4. **Access Control**: Use Azure RBAC for resource access control
 
-# Check database connectivity
-aws rds describe-db-instances --db-instance-identifier lexiscan-prod-db
-```
+## Performance Optimization
 
-#### Performance Issues
-```bash
-# Check CloudWatch metrics
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/ECS \
-  --metric-name CPUUtilization \
-  --dimensions Name=ServiceName,Value=lexiscan-prod-backend \
-  --start-time 2024-01-01T00:00:00Z \
-  --end-time 2024-01-01T23:59:59Z \
-  --period 300 \
-  --statistics Average
-```
+1. **Container Resources**: Adjust CPU/memory based on usage patterns
+2. **Scaling Rules**: Configure auto-scaling based on HTTP requests or CPU usage
+3. **CDN**: Consider Azure CDN for Static Web Apps for global performance
+4. **Database**: Monitor and optimize PostgreSQL performance
 
-### Rollback Procedures
+## Backup and Disaster Recovery
 
-#### Automatic Rollback
-The CI/CD pipeline includes automatic rollback on deployment failure.
-
-#### Manual Rollback
-```bash
-# Rollback to previous ECS task definition
-aws ecs update-service \
-  --cluster lexiscan-prod-cluster \
-  --service lexiscan-prod-backend \
-  --task-definition lexiscan-backend:PREVIOUS_REVISION
-
-# Rollback Terraform changes
-terraform apply -var-file=environments/production.tfvars -target=module.ecs
-```
-
-## Scaling
-
-### Horizontal Scaling
-```bash
-# Scale ECS services
-aws ecs update-service \
-  --cluster lexiscan-prod-cluster \
-  --service lexiscan-prod-backend \
-  --desired-count 4
-```
-
-### Vertical Scaling
-Update Terraform variables and redeploy:
-```hcl
-backend_cpu = 1024
-backend_memory = 2048
-```
-
-### Database Scaling
-```bash
-# Scale RDS instance
-aws rds modify-db-instance \
-  --db-instance-identifier lexiscan-prod-db \
-  --db-instance-class db.t3.medium \
-  --apply-immediately
-```
-
-## Maintenance
-
-### Regular Tasks
-- **Weekly**: Review CloudWatch alarms and logs
-- **Monthly**: Update dependencies and security patches
-- **Quarterly**: Review and optimize costs
-- **Annually**: Security audit and compliance review
-
-### Backup and Recovery
-- **Database**: Automated daily backups with 7-day retention
-- **Application Data**: S3 versioning and lifecycle policies
-- **Infrastructure**: Terraform state stored in S3 with versioning
-- **Disaster Recovery**: Multi-AZ deployment with automated failover
+1. **Database Backups**: Automated backups enabled on PostgreSQL Flexible Server
+2. **Storage Backups**: Azure Blob Storage has geo-redundancy
+3. **Code Repository**: GitHub serves as source of truth
+4. **Infrastructure as Code**: All resources can be recreated from configuration
 
 ## Cost Optimization
 
-### Staging Environment
-- Use t3.micro instances
-- Single AZ deployment
-- Minimal backup retention
-- Estimated cost: $50-100/month
-
-### Production Environment
-- Use t3.small+ instances
-- Multi-AZ deployment
-- Full backup and monitoring
-- Estimated cost: $200-500/month
-
-### Cost Monitoring
-- Set up billing alerts
-- Use AWS Cost Explorer
-- Regular resource utilization review
-- Consider Reserved Instances for stable workloads
-
-## Support
-
-For deployment issues:
-1. Check this documentation
-2. Review CloudWatch logs
-3. Check GitHub Issues
-4. Contact the development team
-
----
-
-**Note**: This deployment guide assumes familiarity with AWS services and Terraform. For production deployments, consider engaging with AWS Professional Services or a certified partner.
+1. **Container App**: Use consumption plan for variable workloads
+2. **Storage**: Use appropriate storage tiers (Hot/Cool/Archive)
+3. **Database**: Right-size compute and storage based on usage
+4. **Monitoring**: Use Azure Cost Management for tracking and alerts

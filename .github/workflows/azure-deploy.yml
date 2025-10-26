@@ -2,16 +2,15 @@ name: Azure Deployment Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
     tags: ['v*']
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 env:
-  AZURE_RG: clauseforge
+  AZURE_RG: clauseforge-prod
   AZURE_LOCATION: eastus2
   ACR_NAME: clauseforgeacr
-  ACA_ENV: clauseforge-env
   ACA_APP: clauseforge-api
   BACKEND_IMAGE_NAME: clauseforge-api
   FRONTEND_IMAGE_NAME: clauseforge-frontend
@@ -159,11 +158,7 @@ jobs:
   build-and-push:
     needs: [backend-test, frontend-test, security-scan]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    
-    outputs:
-      backend-image-tag: ${{ steps.backend-meta.outputs.tags }}
-      frontend-image-tag: ${{ steps.frontend-meta.outputs.tags }}
+    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
@@ -174,22 +169,8 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
       - name: Login to Azure Container Registry
         run: az acr login --name ${{ env.ACR_NAME }}
-      
-      - name: Extract backend metadata
-        id: backend-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Build and push backend image using ACR Tasks
         run: |
@@ -199,17 +180,6 @@ jobs:
             --image ${{ env.BACKEND_IMAGE_NAME }}:latest \
             ./backend
       
-      - name: Extract frontend metadata
-        id: frontend-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
       - name: Build and push frontend image using ACR Tasks
         run: |
           az acr build \
@@ -218,61 +188,13 @@ jobs:
             --image ${{ env.FRONTEND_IMAGE_NAME }}:latest \
             ./frontend
 
-  # Deploy to Azure Container Apps (Staging)
-  deploy-staging:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Update Container App with new image
-        run: |
-          az containerapp update \
-            -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }}-staging \
-            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
-            --set-env-vars \
-            CLAUDE_API_KEY=secretref:claude-api-key \
-            STRIPE_SECRET_KEY=secretref:stripe-secret-key \
-            DATABASE_URL=secretref:database-url \
-            REDIS_URL=secretref:redis-url \
-            AZURE_STORAGE_CONNECTION_STRING=secretref:storage-connection \
-            JWT_SECRET=secretref:jwt-secret \
-            AZURE_DOC_INTEL_ENDPOINT=secretref:doc-intel-endpoint \
-            AZURE_DOC_INTEL_KEY=secretref:doc-intel-key \
-            ENVIRONMENT=staging \
-            PORT=8000
-      
-      - name: Wait for deployment
-        run: sleep 60
-      
-      - name: Get Container App URL
-        id: get-url
-        run: |
-          FQDN=$(az containerapp show -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }}-staging --query properties.configuration.ingress.fqdn -o tsv)
-          echo "app_url=https://$FQDN" >> $GITHUB_OUTPUT
-      
-      - name: Run smoke tests
-        run: |
-          # Basic health checks
-          curl -f "${{ steps.get-url.outputs.app_url }}/api/health" || exit 1
-          curl -f "${{ steps.get-url.outputs.app_url }}/api/health/detailed" || exit 1
-          
-          echo "✅ Staging deployment successful: ${{ steps.get-url.outputs.app_url }}"
+
 
   # Deploy to Azure Container Apps (Production)
   deploy-production:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main'
     environment: production
     
     steps:
@@ -290,16 +212,12 @@ jobs:
             -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }} \
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
             --set-env-vars \
-            CLAUDE_API_KEY=secretref:claude-api-key \
-            STRIPE_SECRET_KEY=secretref:stripe-secret-key \
-            DATABASE_URL=secretref:database-url \
-            REDIS_URL=secretref:redis-url \
-            AZURE_STORAGE_CONNECTION_STRING=secretref:storage-connection \
-            JWT_SECRET=secretref:jwt-secret \
-            AZURE_DOC_INTEL_ENDPOINT=secretref:doc-intel-endpoint \
-            AZURE_DOC_INTEL_KEY=secretref:doc-intel-key \
-            ENVIRONMENT=production \
-            PORT=8000
+              DATABASE_URL=secretref:database-url \
+              AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn \
+              STRIPE_SECRET_KEY=secretref:stripe-secret-key \
+              CLAUDE_API_KEY=secretref:claude-api-key \
+              ENVIRONMENT=production \
+              PORT=8000
       
       - name: Wait for deployment
         run: sleep 120
@@ -316,9 +234,6 @@ jobs:
           curl -f "${{ steps.get-url.outputs.app_url }}/api/health" || exit 1
           curl -f "${{ steps.get-url.outputs.app_url }}/api/health/detailed" || exit 1
           
-          # Test key endpoints
-          curl -f "${{ steps.get-url.outputs.app_url }}/api/auth/health" || echo "Auth endpoint check failed"
-          
           echo "✅ Production deployment successful: ${{ steps.get-url.outputs.app_url }}"
       
       - name: Notify deployment success
@@ -326,23 +241,6 @@ jobs:
         run: |
           echo "🚀 Production deployment successful!"
           echo "Application URL: ${{ steps.get-url.outputs.app_url }}"
-          
-          # Create GitHub release if this is a tag push
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            echo "Creating GitHub release for $TAG_NAME"
-            
-            # Generate release notes
-            RELEASE_NOTES="Release $TAG_NAME deployed to Azure Container Apps"
-            
-            # Create GitHub release
-            gh release create "$TAG_NAME" \
-              --title "Release $TAG_NAME" \
-              --notes "$RELEASE_NOTES" \
-              --latest
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Rollback on failure
   rollback-production:
@@ -382,21 +280,11 @@ jobs:
   deploy-frontend:
     needs: [frontend-test]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Set environment variables
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "ENVIRONMENT=production" >> $GITHUB_ENV
-            echo "API_URL=${{ secrets.PROD_API_URL }}" >> $GITHUB_ENV
-          else
-            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            echo "API_URL=${{ secrets.STAGING_API_URL }}" >> $GITHUB_ENV
-          fi
       
       - name: Build and Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
@@ -408,51 +296,5 @@ jobs:
           api_location: ""
           output_location: "out"
         env:
-          NEXT_PUBLIC_API_URL: ${{ env.API_URL }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.APP_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
 
-  # Create Release (on tag push)
-  create-release:
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [deploy-production]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Extract version from tag
-        id: version
-        run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG_NAME#v}
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.tag_name }}
-          name: Release ${{ steps.version.outputs.tag_name }}
-          body: |
-            ## ClauseForge Release ${{ steps.version.outputs.tag_name }}
-            
-            ### 🚀 Deployed to Azure
-            - **Backend**: Azure Container Apps
-            - **Frontend**: Azure Static Web Apps
-            - **Database**: Azure PostgreSQL Flexible Server
-            - **Storage**: Azure Blob Storage
-            
-            ### 📋 Changes
-            See commit history for detailed changes.
-            
-            ### 🔗 Links
-            - [Production App](https://clauseforge.azurestaticapps.net)
-            - [API Documentation](https://clauseforge-api.azurecontainerapps.io/docs)
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

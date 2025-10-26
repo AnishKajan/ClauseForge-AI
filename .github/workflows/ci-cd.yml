@@ -1,11 +1,8 @@
-name: CI/CD Pipeline
+name: AWS CI/CD Pipeline (DISABLED)
 
 on:
-  push:
-    branches: [main, develop]
-    tags: ['v*']
-  pull_request:
-    branches: [main, develop]
+  # Disabled - using Azure deployment instead
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
@@ -17,7 +14,7 @@ jobs:
   # Backend Tests
   backend-test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: pgvector/pgvector:pg15
@@ -31,7 +28,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
+
       redis:
         image: redis:7-alpine
         options: >-
@@ -41,16 +38,16 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-      
+          python-version: "3.11"
+
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
@@ -58,23 +55,23 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      
+
       - name: Install dependencies
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: Run linting
         working-directory: ./backend
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      
+
       - name: Run type checking
         working-directory: ./backend
         run: mypy . --ignore-missing-imports
-      
+
       - name: Run tests
         working-directory: ./backend
         env:
@@ -84,7 +81,7 @@ jobs:
           ENVIRONMENT: test
         run: |
           pytest --cov=. --cov-report=xml --cov-report=html
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -95,34 +92,34 @@ jobs:
   # Frontend Tests
   frontend-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci
-      
+
       - name: Run linting
         working-directory: ./frontend
         run: npm run lint
-      
+
       - name: Run type checking
         working-directory: ./frontend
         run: npm run type-check
-      
+
       - name: Run tests
         working-directory: ./frontend
         run: npm run test -- --coverage --watchAll=false
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -133,53 +130,53 @@ jobs:
   # Security Scanning
   security-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
   # Build and Push Docker Images
   build-and-push:
     needs: [backend-test, frontend-test, security-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    
+
     outputs:
       backend-image-tag: ${{ steps.backend-meta.outputs.tags }}
       frontend-image-tag: ${{ steps.frontend-meta.outputs.tags }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Extract backend metadata
         id: backend-meta
         uses: docker/metadata-action@v5
@@ -190,7 +187,7 @@ jobs:
             type=ref,event=pr
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      
+
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
@@ -201,7 +198,7 @@ jobs:
           labels: ${{ steps.backend-meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
+
       - name: Extract frontend metadata
         id: frontend-meta
         uses: docker/metadata-action@v5
@@ -212,7 +209,7 @@ jobs:
             type=ref,event=pr
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      
+
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
@@ -230,27 +227,27 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
     environment: staging
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.0
-      
+
       - name: Terraform Init
         working-directory: ./infrastructure/terraform
         run: terraform init -backend-config=backend-config/staging.hcl
-      
+
       - name: Terraform Plan
         working-directory: ./infrastructure/terraform
         env:
@@ -263,7 +260,7 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}
         run: terraform plan -var-file=environments/staging.tfvars
-      
+
       - name: Terraform Apply
         working-directory: ./infrastructure/terraform
         env:
@@ -276,15 +273,15 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}
         run: terraform apply -auto-approve -var-file=environments/staging.tfvars
-      
+
       - name: Run smoke tests
         run: |
           # Wait for deployment to be ready
           sleep 60
-          
+
           # Get ALB DNS name from Terraform output
           ALB_DNS=$(terraform -chdir=./infrastructure/terraform output -raw alb_dns_name)
-          
+
           # Run basic health checks
           curl -f "http://${ALB_DNS}/api/health" || exit 1
           curl -f "http://${ALB_DNS}/" || exit 1
@@ -295,27 +292,27 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.0
-      
+
       - name: Terraform Init
         working-directory: ./infrastructure/terraform
         run: terraform init -backend-config=backend-config/production.hcl
-      
+
       - name: Terraform Plan
         working-directory: ./infrastructure/terraform
         env:
@@ -329,7 +326,7 @@ jobs:
           TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}
           TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }}
         run: terraform plan -var-file=environments/production.tfvars
-      
+
       - name: Terraform Apply
         working-directory: ./infrastructure/terraform
         env:
@@ -343,26 +340,26 @@ jobs:
           TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}
           TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }}
         run: terraform apply -auto-approve -var-file=environments/production.tfvars
-      
+
       - name: Run production smoke tests
         run: |
           # Wait for deployment to be ready
           sleep 120
-          
+
           # Get application URL from Terraform output
           APP_URL=$(terraform -chdir=./infrastructure/terraform output -raw application_url)
-          
+
           # Run comprehensive health checks
           curl -f "${APP_URL}/api/health" || exit 1
           curl -f "${APP_URL}/api/health/detailed" || exit 1
           curl -f "${APP_URL}/" || exit 1
-      
+
       - name: Notify deployment success
         if: success()
         run: |
           echo "🚀 Production deployment successful!"
           echo "Application URL: $(terraform -chdir=./infrastructure/terraform output -raw application_url)"
-          
+
           # Create GitHub release if this is a tag push
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
@@ -391,28 +388,28 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.ref == 'refs/heads/main'
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
+
       - name: Rollback ECS services
         run: |
           # Get the previous task definition revision
           BACKEND_SERVICE=$(aws ecs describe-services --cluster lexiscan-production-cluster --services lexiscan-production-backend --query 'services[0].serviceName' --output text)
           FRONTEND_SERVICE=$(aws ecs describe-services --cluster lexiscan-production-cluster --services lexiscan-production-frontend --query 'services[0].serviceName' --output text)
-          
+
           # Update services to previous revision (this is a simplified rollback)
           aws ecs update-service --cluster lexiscan-production-cluster --service $BACKEND_SERVICE --force-new-deployment
           aws ecs update-service --cluster lexiscan-production-cluster --service $FRONTEND_SERVICE --force-new-deployment
-          
+
           echo "🔄 Rollback initiated for production services"
 
   # Create Release (on tag push)
@@ -420,13 +417,13 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [deploy-production]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for changelog generation
-      
+          fetch-depth: 0 # Fetch full history for changelog generation
+
       - name: Extract version from tag
         id: version
         run: |
@@ -434,12 +431,12 @@ jobs:
           VERSION=${TAG_NAME#v}
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
+
       - name: Generate changelog for release
         run: |
           # Generate changelog for this specific version
           ./scripts/generate-changelog.sh -f $(git describe --tags --abbrev=0 ${{ steps.version.outputs.tag_name }}^) -t ${{ steps.version.outputs.tag_name }} -o RELEASE_NOTES.md
-      
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -451,12 +448,12 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Update changelog in repository
         run: |
           # Generate full changelog
           ./scripts/generate-changelog.sh -o CHANGELOG.md
-          
+
           # Commit updated changelog
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
