@@ -14,6 +14,8 @@ const BodySchema = z.object({
     .optional(),
 })
 
+type CheckoutBody = z.infer<typeof BodySchema>
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(req: Request) {
@@ -27,13 +29,20 @@ export async function POST(req: Request) {
       )
     }
 
-    // Parse and validate request body
+    // Parse and validate request body with bulletproof typing
     const rawBody = await req.json()
-    const validatedBody = BodySchema.parse(rawBody)
     
-    // Extract validated fields with explicit typing
-    const priceId: string | undefined = validatedBody.priceId
-    const user: { id: string; email?: string } | undefined = validatedBody.user
+    // Use safeParse for better error handling and type safety
+    const parseResult = BodySchema.safeParse(rawBody)
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid request body', details: parseResult.error.issues },
+        { status: 400 }
+      )
+    }
+    
+    // Now we have guaranteed type safety
+    const { priceId, user } = parseResult.data
     
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
