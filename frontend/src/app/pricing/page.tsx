@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -11,12 +11,12 @@ import { BackNavigation } from '@/components/BackNavigation'
 import { Check } from 'lucide-react'
 
 export default function PricingPage() {
-  const { data: session } = useSession()
+  const { user } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleUpgrade = async () => {
-    if (!session) {
+    if (!user) {
       router.push('/login?callbackUrl=/pricing')
       return
     }
@@ -58,7 +58,7 @@ export default function PricingPage() {
               <Logo size={32} showText={true} />
             </Link>
             <div className="flex items-center space-x-4">
-              {session ? (
+              {user ? (
                 <Button variant="ghost" asChild className="text-clauseforge-primary hover:bg-clauseforge-primary/5 font-legal">
                   <Link href="/dashboard">Dashboard</Link>
                 </Button>

@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BackNavigation } from '@/components/BackNavigation'
 import { apiFetch } from '@/lib/api'
 
 export default function TestSSOPage() {
-  const { data: session } = useSession()
+  const { user, accessToken } = useAuth()
   const [apiResponse, setApiResponse] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -50,15 +50,15 @@ export default function TestSSOPage() {
             {/* Session Info */}
             <div>
               <h3 className="text-lg font-semibold text-clauseforge-primary mb-2">Session Status</h3>
-              {session ? (
+              {user ? (
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-green-800 font-medium">✅ Authenticated</p>
                   <p className="text-sm text-green-700 mt-1">
-                    Email: {session.user?.email}
+                    Email: {user.email}
                   </p>
-                  {(session as any).idToken && (
+                  {accessToken && (
                     <p className="text-xs text-green-600 mt-1">
-                      ID Token: {(session as any).idToken.substring(0, 50)}...
+                      Token: {accessToken.substring(0, 50)}...
                     </p>
                   )}
                 </div>
@@ -77,7 +77,7 @@ export default function TestSSOPage() {
               <h3 className="text-lg font-semibold text-clauseforge-primary mb-2">Secure API Test</h3>
               <Button
                 onClick={testSecureEndpoint}
-                disabled={!session || isLoading}
+                disabled={!user || isLoading}
                 className="bg-clauseforge-primary hover:bg-clauseforge-primary-hover text-white font-legal"
               >
                 {isLoading ? 'Testing...' : 'Test Secure Endpoint'}

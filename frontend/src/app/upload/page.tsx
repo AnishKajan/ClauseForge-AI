@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useDropzone } from 'react-dropzone'
@@ -18,7 +18,7 @@ interface UploadStatus {
 }
 
 export default function UploadPage() {
-  const { data: session } = useSession()
+  const { accessToken } = useAuth()
   const router = useRouter()
   const [files, setFiles] = useState<File[]>([])
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ 
@@ -58,7 +58,7 @@ export default function UploadPage() {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/documents/upload`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${(session as any)?.accessToken}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: formData,
         })

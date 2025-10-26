@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
 
@@ -28,7 +28,7 @@ interface SSOConfigProps {
 }
 
 export default function SSOConfig({ orgId }: SSOConfigProps) {
-  const { data: session } = useSession()
+  const { user, accessToken } = useAuth()
   const [config, setConfig] = useState<SSOConfig>({
     type: 'oidc',
     name: '',
@@ -51,7 +51,7 @@ export default function SSOConfig({ orgId }: SSOConfigProps) {
     try {
       const response = await fetch('/api/sso/config', {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -74,7 +74,7 @@ export default function SSOConfig({ orgId }: SSOConfigProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(config),
       })
@@ -101,7 +101,7 @@ export default function SSOConfig({ orgId }: SSOConfigProps) {
     try {
       const response = await fetch(`/api/sso/test/${orgId}`, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -127,7 +127,7 @@ export default function SSOConfig({ orgId }: SSOConfigProps) {
       const response = await fetch('/api/sso/config', {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -178,7 +178,7 @@ export default function SSOConfig({ orgId }: SSOConfigProps) {
     }))
   }
 
-  if (session?.user?.role !== 'admin') {
+  if (user?.role !== 'admin') {
     return (
       <Card className="p-6">
         <p className="text-gray-600">Only administrators can configure SSO.</p>

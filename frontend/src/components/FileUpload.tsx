@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
-import { api } from '@/lib/api'
+import { apiClient as api } from '@/lib/api'
 
 interface FileUploadProps {
   onUploadSuccess?: (document: any) => void

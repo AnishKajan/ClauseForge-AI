@@ -28,10 +28,15 @@ export async function POST(req: Request) {
       )
     }
 
-    // Parse request body with proper Zod validation
-    const body = (await req.json()) as unknown
-    const parsed = BodySchema.parse(body) as CheckoutBody
-    const { priceId, user } = parsed
+    // Parse request body with proper Zod validation and error handling
+    const json = await req.json().catch(() => ({}))
+    const parse = BodySchema.safeParse(json)
+    
+    if (!parse.success) {
+      return NextResponse.json({ error: "Invalid body" }, { status: 400 })
+    }
+    
+    const { priceId, user } = parse.data
     
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 

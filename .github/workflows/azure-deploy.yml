@@ -189,15 +189,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - name: Build & Deploy to SWA
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: upload
-          app_location: /frontend
-          api_location: ""
-          output_location: out
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
+    - uses: actions/checkout@v4
+
+    - name: Build and Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: upload
+        app_location: "frontend"         # <— no leading slash
+        output_location: "out"           # produced by `next export`
+        is_static_export: true           # be explicit for Next export
+        app_build_command: "npm ci && npm run build:static"
+      env:
+        NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}

@@ -1,25 +1,63 @@
 /**
- * Authentication hooks and utilities
+ * Client-side authentication hook for static export
  */
 
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+
+interface User {
+  id: string
+  email: string
+  name?: string
+  role?: string
+  isActive?: boolean
+  emailVerified?: boolean
+  orgId?: string
+  provider?: string
+}
 
 export function useAuth() {
-  const { data: session, status } = useSession()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  const user = session?.user
-  const isLoading = status === 'loading'
-  const isAuthenticated = status === 'authenticated'
-  const isUnauthenticated = status === 'unauthenticated'
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      setIsLoading(false)
+      return
+    }
 
-  const logout = useCallback(async () => {
-    await signOut({ 
-      callbackUrl: '/auth/signin',
-      redirect: true 
-    })
+    // Check for stored auth token and user data
+    const token = localStorage.getItem('auth_token')
+    const userData = localStorage.getItem('user_data')
+    
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData))
+      } catch (e) {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user_data')
+      }
+    }
+    setIsLoading(false)
+  }, [])
+
+  const logout = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+    }
+    setUser(null)
+    router.push('/login')
+  }, [router])
+
+  const login = useCallback((token: string, userData: User) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', token)
+      localStorage.setItem('user_data', JSON.stringify(userData))
+    }
+    setUser(userData)
   }, [])
 
   const hasRole = useCallback((role: string | string[]) => {
@@ -47,27 +85,30 @@ export function useAuth() {
 
   const requireAuth = useCallback(() => {
     if (!isAuthenticated && !isLoading) {
-      router.push('/auth/signin')
+      router.push('/login')
       return false
     }
     return true
-  }, [isAuthenticated, isLoading, router])
+  }, [user, isLoading, router])
 
   const requireRole = useCallback((role: string | string[]) => {
     if (!requireAuth()) return false
     
     if (!hasRole(role)) {
-      router.push('/dashboard') // Redirect to dashboard if insufficient permissions
+      router.push('/dashboard')
       return false
     }
     return true
   }, [requireAuth, hasRole, router])
 
+  const isAuthenticated = !!user
+  const isUnauthenticated = !user && !isLoading
+
   return {
     // Session data
-    session,
+    session: user ? { user } : null,
     user,
-    accessToken: session?.accessToken,
+    accessToken: typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null,
     
     // Status
     isLoading,
@@ -76,6 +117,7 @@ export function useAuth() {
     
     // Actions
     logout,
+    login,
     
     // Permission checks
     hasRole,

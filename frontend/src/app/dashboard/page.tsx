@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +14,7 @@ interface HealthStatus {
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession()
+  const { user, logout } = useAuth()
   const [healthStatus, setHealthStatus] = useState<HealthStatus>({ status: 'loading' })
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   }, [])
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/' })
+    logout()
   }
 
   return (
@@ -59,7 +59,7 @@ export default function DashboardPage() {
             </Link>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-clauseforge-primary/70 font-legal">
-                Welcome, {session?.user?.email}
+                Welcome, {user?.email}
               </span>
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-clauseforge-primary hover:bg-clauseforge-primary/5 font-legal">
                 <LogOut className="h-4 w-4 mr-2" />

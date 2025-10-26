@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
-import { api } from '@/lib/api'
+import { apiClient as api } from '@/lib/api'
 import { 
   Citation, 
   RAGQueryRequest, 

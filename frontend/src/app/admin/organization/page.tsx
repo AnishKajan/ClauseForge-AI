@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import SSOConfig from '@/components/SSOConfig'
@@ -19,7 +19,7 @@ interface OrganizationDetails {
 }
 
 export default function OrganizationPage() {
-  const { data: session } = useSession()
+  const { user, accessToken } = useAuth()
   const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'sso' | 'settings'>('overview')
   const [orgDetails, setOrgDetails] = useState<OrganizationDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -34,7 +34,7 @@ export default function OrganizationPage() {
     try {
       const response = await fetch('/api/organization/details', {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -59,7 +59,7 @@ export default function OrganizationPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ name: orgName }),
       })
@@ -102,7 +102,7 @@ export default function OrganizationPage() {
     )
   }
 
-  if (session?.user?.role !== 'admin') {
+  if (user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="p-8">

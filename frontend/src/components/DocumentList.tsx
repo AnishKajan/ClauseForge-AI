@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { api } from '@/lib/api'
+import { apiClient as api } from '@/lib/api'
 
 interface Document {
   id: string

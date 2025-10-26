@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
 
@@ -50,7 +50,7 @@ interface TeamWorkspaceProps {
 }
 
 export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
-  const { data: session } = useSession()
+  const { user, accessToken } = useAuth()
   const [activeTab, setActiveTab] = useState<'members' | 'documents' | 'activity'>('members')
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
@@ -84,7 +84,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
   const loadTeamMembers = async () => {
     const response = await fetch('/api/organization/team', {
       headers: {
-        'Authorization': `Bearer ${session?.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
     })
 
@@ -97,7 +97,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
   const loadDocuments = async () => {
     const response = await fetch('/api/organization/documents/shared', {
       headers: {
-        'Authorization': `Bearer ${session?.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
     })
 
@@ -110,7 +110,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
   const loadActivity = async () => {
     const response = await fetch('/api/organization/activity', {
       headers: {
-        'Authorization': `Bearer ${session?.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
     })
 
@@ -129,7 +129,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           email: inviteEmail,
@@ -159,7 +159,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ role: newRole }),
       })
@@ -185,7 +185,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
       const response = await fetch(`/api/organization/team/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -244,7 +244,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
     }
   }
 
-  const canManageTeam = session?.user?.role === 'admin'
+  const canManageTeam = user?.role === 'admin'
 
   return (
     <div className="space-y-6">
@@ -329,7 +329,7 @@ export default function TeamWorkspace({ orgId }: TeamWorkspaceProps) {
                         )}
                       </div>
                     </div>
-                    {canManageTeam && member.id !== session?.user?.id && (
+                    {canManageTeam && member.id !== user?.id && (
                       <div className="flex space-x-2">
                         <select
                           value={member.role}
