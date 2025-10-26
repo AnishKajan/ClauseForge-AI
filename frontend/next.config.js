@@ -2,17 +2,32 @@ const path = require("path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Removed static export to support API routes
-  // output: 'export',
+  // Use standalone output for Docker deployment
+  output: 'standalone',
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
   
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     // Map "@" to "<project>/src" for both TS and Webpack
+    const srcPath = path.resolve(__dirname, "src");
+    
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      "@": path.resolve(__dirname, "src"),
+      "@": srcPath,
     };
+    
+    // Ensure module resolution works in all environments
+    config.resolve.modules = [
+      srcPath,
+      path.resolve(__dirname, "node_modules"),
+      "node_modules"
+    ];
+    
+    // Add fallbacks for better compatibility
+    config.resolve.fallback = {
+      ...(config.resolve.fallback || {}),
+    };
+    
     return config;
   },
   
