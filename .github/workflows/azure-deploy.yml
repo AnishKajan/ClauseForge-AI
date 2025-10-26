@@ -126,7 +126,7 @@ jobs:
           sarif_file: trivy-results.sarif
 
   build-and-push:
-    needs: [backend-test, frontend-test, security-scan]
+    needs: [backend-test, security-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -142,11 +142,6 @@ jobs:
           az acr build --registry ${{ env.ACR_NAME }} \
             --image ${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
             --image ${{ env.BACKEND_IMAGE_NAME }}:latest ./backend
-      - name: Build & push frontend (ACR Tasks)
-        run: |
-          az acr build --registry ${{ env.ACR_NAME }} \
-            --image ${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }} \
-            --image ${{ env.FRONTEND_IMAGE_NAME }}:latest ./frontend
 
   deploy-production:
     needs: build-and-push
