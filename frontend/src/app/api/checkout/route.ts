@@ -9,17 +9,17 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    // Check if session and user exist
+    if (!session || !session.user || !session.user.email) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       )
     }
 
-    // Parse request body without complex typing
-    const requestBody = await req.json()
-    const priceId = requestBody?.priceId as string | undefined
-    const requestUser = requestBody?.user as { id?: string; email?: string } | undefined
+    // Parse request body and extract priceId only
+    const requestBody: any = await req.json()
+    const priceId: string | undefined = requestBody.priceId
     
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
@@ -29,6 +29,12 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    // Get user info from session (not from request body)
+    const sessionUser = session.user as any
+    const userEmail = session.user.email
+    const userId = sessionUser.id || userEmail
+    const orgId = sessionUser.orgId || 'default'
 
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -42,10 +48,10 @@ export async function POST(req: Request) {
       ],
       success_url: `${process.env.NEXTAUTH_URL}/dashboard?success=true`,
       cancel_url: `${process.env.NEXTAUTH_URL}/pricing?canceled=true`,
-      customer_email: session.user.email,
+      customer_email: userEmail,
       metadata: {
-        userId: requestUser?.id || (session.user as any).id || session.user.email,
-        orgId: (session.user as any).orgId || 'default',
+        userId: userId,
+        orgId: orgId,
       },
     })
 
