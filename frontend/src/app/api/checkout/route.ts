@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Stripe from 'stripe'
+import { z } from 'zod'
 
-type CheckoutBody = { 
-  priceId?: string
-  [k: string]: unknown 
-}
+const BodySchema = z.object({
+  user: z.object({
+    id: z.string(),
+    email: z.string().email().optional(),
+  }).optional(),
+  priceId: z.string().optional(),
+})
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -21,8 +25,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = (await request.json()) as CheckoutBody
-    const { priceId } = body
+    const json = await request.json()
+    const parsed = BodySchema.safeParse(json)
+    
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request body', details: parsed.error.issues },
+        { status: 400 }
+      )
+    }
+
+    const { priceId, user } = parsed.data
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
     if (!finalPriceId) {
@@ -46,7 +59,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXTAUTH_URL}/pricing?canceled=true`,
       customer_email: session.user.email,
       metadata: {
-        userId: (session.user as any).id || session.user.email,
+        userId: user?.id || (session.user as any).id || session.user.email,
         orgId: (session.user as any).orgId || 'default',
       },
     })

@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'ClauseForge - AI Contract Analyzer',
@@ -29,12 +26,12 @@ export const metadata: Metadata = {
       {
         rel: 'mask-icon',
         url: '/safari-pinned-tab.svg',
-        color: '#2563eb',
+        color: '#1E3A5F',
       },
     ],
   },
   manifest: '/site.webmanifest',
-  themeColor: '#2563eb',
+  themeColor: '#1E3A5F',
   colorScheme: 'light',
   viewport: {
     width: 'device-width',
@@ -90,10 +87,10 @@ export default function RootLayout({
         <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
-        <meta name="theme-color" content="#2563eb" />
-        <meta name="msapplication-TileColor" content="#2563eb" />
+        <meta name="theme-color" content="#1E3A5F" />
+        <meta name="msapplication-TileColor" content="#1E3A5F" />
       </head>
-      <body className={inter.className}>
+      <body className="font-legal">
         <Providers>
           {children}
         </Providers>

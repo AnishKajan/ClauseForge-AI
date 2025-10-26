@@ -75,7 +75,7 @@ jobs:
       - name: Run tests
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lexiscan_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lexiscan_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key
           ENVIRONMENT: test

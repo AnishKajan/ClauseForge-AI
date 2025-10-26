@@ -49,19 +49,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/">
-              <Logo useFavicon={true} />
+              <Logo size={32} showText={true} />
             </Link>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-clauseforge-primary/70 font-legal">
                 Welcome, {session?.user?.email}
               </span>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-clauseforge-primary hover:bg-clauseforge-primary/5 font-legal">
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
@@ -72,9 +72,9 @@ export default function DashboardPage() {
 
       <div className="container mx-auto px-4 py-8">
         {/* Status Card */}
-        <Card className="mb-8">
+        <Card className="mb-8 border-gray-200 shadow-sm">
           <CardHeader>
-            <CardTitle>System Status</CardTitle>
+            <CardTitle className="text-clauseforge-primary font-legal">System Status</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
@@ -82,7 +82,7 @@ export default function DashboardPage() {
                 healthStatus.status === 'healthy' ? 'bg-green-500' :
                 healthStatus.status === 'unhealthy' ? 'bg-red-500' : 'bg-yellow-500'
               }`} />
-              <span className="text-sm">
+              <span className="text-sm text-clauseforge-primary font-legal">
                 {healthStatus.message || 'Checking backend status...'}
               </span>
             </div>
@@ -91,69 +91,69 @@ export default function DashboardPage() {
 
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-clauseforge-primary mb-2 font-legal">Dashboard</h1>
+          <p className="text-clauseforge-primary/70 font-legal">
             Manage your contracts and analyze documents with AI-powered insights.
           </p>
         </div>
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-gray-200">
             <CardHeader className="pb-3">
-              <Upload className="h-8 w-8 text-blue-600 mb-2" />
-              <CardTitle className="text-lg">Upload Document</CardTitle>
-              <CardDescription>
+              <Upload className="h-8 w-8 text-clauseforge-primary mb-2" />
+              <CardTitle className="text-lg text-clauseforge-primary font-legal">Upload Document</CardTitle>
+              <CardDescription className="text-clauseforge-primary/70 font-legal">
                 Upload a new contract for analysis
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild className="w-full">
+              <Button asChild className="w-full bg-clauseforge-primary hover:bg-clauseforge-primary-hover text-white font-legal">
                 <Link href="/upload">Upload Now</Link>
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-gray-200">
             <CardHeader className="pb-3">
-              <FileText className="h-8 w-8 text-green-600 mb-2" />
-              <CardTitle className="text-lg">My Documents</CardTitle>
-              <CardDescription>
+              <FileText className="h-8 w-8 text-clauseforge-primary mb-2" />
+              <CardTitle className="text-lg text-clauseforge-primary font-legal">My Documents</CardTitle>
+              <CardDescription className="text-clauseforge-primary/70 font-legal">
                 View and manage your documents
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full border-clauseforge-primary text-clauseforge-primary hover:bg-clauseforge-primary hover:text-white font-legal">
                 View Documents
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-gray-200">
             <CardHeader className="pb-3">
-              <MessageSquare className="h-8 w-8 text-purple-600 mb-2" />
-              <CardTitle className="text-lg">AI Chat</CardTitle>
-              <CardDescription>
+              <MessageSquare className="h-8 w-8 text-clauseforge-primary mb-2" />
+              <CardTitle className="text-lg text-clauseforge-primary font-legal">AI Chat</CardTitle>
+              <CardDescription className="text-clauseforge-primary/70 font-legal">
                 Ask questions about your contracts
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full border-clauseforge-primary text-clauseforge-primary hover:bg-clauseforge-primary hover:text-white font-legal">
                 Start Chat
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-gray-200">
             <CardHeader className="pb-3">
-              <Settings className="h-8 w-8 text-gray-600 mb-2" />
-              <CardTitle className="text-lg">Settings</CardTitle>
-              <CardDescription>
+              <Settings className="h-8 w-8 text-clauseforge-primary mb-2" />
+              <CardTitle className="text-lg text-clauseforge-primary font-legal">Settings</CardTitle>
+              <CardDescription className="text-clauseforge-primary/70 font-legal">
                 Manage your account settings
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full border-clauseforge-primary text-clauseforge-primary hover:bg-clauseforge-primary hover:text-white font-legal">
                 Settings
               </Button>
             </CardContent>
@@ -161,18 +161,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Activity */}
-        <Card>
+        <Card className="border-gray-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-clauseforge-primary font-legal">Recent Activity</CardTitle>
+            <CardDescription className="text-clauseforge-primary/70 font-legal">
               Your latest document analyses and activities
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-clauseforge-primary/50">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No recent activity</p>
-              <p className="text-sm">Upload your first document to get started</p>
+              <p className="font-legal">No recent activity</p>
+              <p className="text-sm font-legal">Upload your first document to get started</p>
             </div>
           </CardContent>
         </Card>

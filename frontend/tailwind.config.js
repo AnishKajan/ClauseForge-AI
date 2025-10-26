@@ -16,6 +16,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        'serif': ['Crimson Text', 'Times New Roman', 'serif'],
+        'legal': ['Crimson Text', 'Times New Roman', 'serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -49,6 +53,12 @@ module.exports = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        clauseforge: {
+          primary: "#1E3A5F",
+          "primary-hover": "#162B48",
+          secondary: "#1A3352",
+          white: "#FFFFFF",
         },
       },
       borderRadius: {
