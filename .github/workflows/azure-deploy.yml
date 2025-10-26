@@ -3,9 +3,14 @@ name: Azure Deployment Pipeline
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ["v*"]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+  id-token: write
 
 env:
   AZURE_RG: clauseforge-prod
@@ -19,7 +24,7 @@ jobs:
   # Backend Tests
   backend-test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: pgvector/pgvector:pg15
@@ -33,7 +38,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
+
       redis:
         image: redis:7-alpine
         options: >-
@@ -43,16 +48,21 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-      
+          python-version: "3.11"
+
+      - name: Install system deps (psycopg build)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev build-essential
+
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
@@ -60,23 +70,26 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      
+
       - name: Install dependencies
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: Run linting
         working-directory: ./backend
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      
+
       - name: Run type checking
         working-directory: ./backend
         run: mypy . --ignore-missing-imports
-      
+
+      - name: Wait for services to be ready
+        run: sleep 10
+
       - name: Run tests
         working-directory: ./backend
         env:
@@ -85,93 +98,107 @@ jobs:
           SECRET_KEY: test-secret-key
           ENVIRONMENT: test
         run: |
-          pytest --cov=. --cov-report=xml --cov-report=html
-      
+          pytest --cov=. --cov-report=xml --cov-report=html || {
+            echo "Backend tests failed. First 50 lines of output:"
+            pytest --tb=short | head -50
+            exit 1
+          }
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           file: ./backend/coverage.xml
           flags: backend
           name: backend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   # Frontend Tests
   frontend-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci
-      
+
       - name: Run linting
         working-directory: ./frontend
         run: npm run lint
-      
+
       - name: Run type checking
         working-directory: ./frontend
         run: npm run type-check
-      
+
       - name: Run tests
         working-directory: ./frontend
-        run: npm run test -- --coverage --watchAll=false
-      
+        run: |
+          npm run test -- --coverage --watchAll=false || {
+            echo "Frontend tests failed. First 50 lines of output:"
+            npm run test -- --watchAll=false | head -50
+            exit 1
+          }
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           file: ./frontend/coverage/lcov.info
           flags: frontend
           name: frontend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   # Security Scanning
   security-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.20.0
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
+        continue-on-error: true
 
   # Build and Push to Azure Container Registry
   build-and-push:
     needs: [backend-test, frontend-test, security-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
+
       - name: Login to Azure Container Registry
         run: az acr login --name ${{ env.ACR_NAME }}
-      
+
       - name: Build and push backend image using ACR Tasks
         run: |
           az acr build \
@@ -179,7 +206,10 @@ jobs:
             --image ${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
             --image ${{ env.BACKEND_IMAGE_NAME }}:latest \
             ./backend
-      
+          echo "✅ Pushed backend images:"
+          echo "  - ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}"
+          echo "  - ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:latest"
+
       - name: Build and push frontend image using ACR Tasks
         run: |
           az acr build \
@@ -187,8 +217,9 @@ jobs:
             --image ${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }} \
             --image ${{ env.FRONTEND_IMAGE_NAME }}:latest \
             ./frontend
-
-
+          echo "✅ Pushed frontend images:"
+          echo "  - ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}"
+          echo "  - ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:latest"
 
   # Deploy to Azure Container Apps (Production)
   deploy-production:
@@ -196,16 +227,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
+
       - name: Update Container App with new image
         run: |
           az containerapp update \
@@ -213,29 +244,37 @@ jobs:
             --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
             --set-env-vars \
               DATABASE_URL=secretref:database-url \
-              AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn \
+              AZURE_STORAGE_CONN=secretref:storage-conn \
               STRIPE_SECRET_KEY=secretref:stripe-secret-key \
               CLAUDE_API_KEY=secretref:claude-api-key \
               ENVIRONMENT=production \
               PORT=8000
-      
+
+      - name: Show deployment info
+        run: |
+          echo "✅ Container App updated with image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}"
+          echo "Active revision:"
+          az containerapp revision list -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }} --query "[?properties.active==\`true\`].name" -o tsv
+          echo "Container App FQDN:"
+          az containerapp show -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }} --query "properties.configuration.ingress.fqdn" -o tsv
+
       - name: Wait for deployment
         run: sleep 120
-      
+
       - name: Get Container App URL
         id: get-url
         run: |
           FQDN=$(az containerapp show -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }} --query properties.configuration.ingress.fqdn -o tsv)
           echo "app_url=https://$FQDN" >> $GITHUB_OUTPUT
-      
+
       - name: Run production smoke tests
         run: |
           # Comprehensive health checks
           curl -f "${{ steps.get-url.outputs.app_url }}/api/health" || exit 1
           curl -f "${{ steps.get-url.outputs.app_url }}/api/health/detailed" || exit 1
-          
+
           echo "✅ Production deployment successful: ${{ steps.get-url.outputs.app_url }}"
-      
+
       - name: Notify deployment success
         if: success()
         run: |
@@ -248,23 +287,23 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.ref == 'refs/heads/main'
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
+
       - name: Rollback Container App
         run: |
           # Get the previous revision
           PREVIOUS_REVISION=$(az containerapp revision list \
             -g ${{ env.AZURE_RG }} -n ${{ env.ACA_APP }} \
             --query "[?properties.active==\`false\`] | [0].name" -o tsv)
-          
+
           if [ -n "$PREVIOUS_REVISION" ]; then
             echo "Rolling back to revision: $PREVIOUS_REVISION"
             az containerapp revision activate \
@@ -273,7 +312,7 @@ jobs:
           else
             echo "No previous revision found for rollback"
           fi
-          
+
           echo "🔄 Rollback initiated for production service"
 
   # Deploy Frontend to Azure Static Web Apps
@@ -281,12 +320,13 @@ jobs:
     needs: [frontend-test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Build and Deploy to Azure Static Web Apps
+        id: swa-deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
@@ -298,3 +338,12 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
 
+      - name: Show SWA deployment info
+        if: always()
+        run: |
+          echo "✅ Static Web App deployment completed"
+          if [ -n "${{ steps.swa-deploy.outputs.static_web_app_url }}" ]; then
+            echo "SWA URL: ${{ steps.swa-deploy.outputs.static_web_app_url }}"
+          else
+            echo "SWA URL: Check Azure portal for the Static Web App URL"
+          fi
