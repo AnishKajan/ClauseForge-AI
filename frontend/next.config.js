@@ -1,9 +1,20 @@
+const path = require("path");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable static export for Azure Static Web Apps
-  output: 'export',
+  // Removed static export to support API routes
+  // output: 'export',
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
+  
+  webpack: (config) => {
+    // Map "@" to "<project>/src" for both TS and Webpack
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      "@": path.resolve(__dirname, "src"),
+    };
+    return config;
+  },
   
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,

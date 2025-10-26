@@ -2,6 +2,17 @@ import { NextResponse } from "next/server"
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Stripe from 'stripe'
+import { z } from 'zod'
+
+const BodySchema = z.object({
+  priceId: z.string(),
+  user: z.object({
+    id: z.string(),
+    email: z.string().email().optional(),
+  }).optional(),
+})
+
+type CheckoutBody = z.infer<typeof BodySchema>
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -17,9 +28,10 @@ export async function POST(req: Request) {
       )
     }
 
-    // Parse request body and extract priceId only
-    const requestBody: any = await req.json()
-    const priceId: string | undefined = requestBody.priceId
+    // Parse request body with proper Zod validation
+    const body = (await req.json()) as unknown
+    const parsed = BodySchema.parse(body) as CheckoutBody
+    const { priceId, user } = parsed
     
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
@@ -32,7 +44,7 @@ export async function POST(req: Request) {
 
     // Get user info from session with explicit typing
     const userEmail: string = session.user.email
-    const userId: string = session.user.id || userEmail
+    const userId: string = user?.id || session.user.id || userEmail
     const orgId: string = session.user.orgId || 'default'
 
     // Create Stripe checkout session
