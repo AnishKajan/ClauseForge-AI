@@ -7,9 +7,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session: any = await getServerSession(authOptions)
     
-    // Check if session and user exist
+    // Check if session and user exist with explicit typing
     if (!session || !session.user || !session.user.email) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -30,11 +30,10 @@ export async function POST(req: Request) {
       )
     }
 
-    // Get user info from session (not from request body)
-    const sessionUser = session.user as any
-    const userEmail = session.user.email
-    const userId = sessionUser.id || userEmail
-    const orgId = sessionUser.orgId || 'default'
+    // Get user info from session with explicit typing
+    const userEmail: string = session.user.email
+    const userId: string = session.user.id || userEmail
+    const orgId: string = session.user.orgId || 'default'
 
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
