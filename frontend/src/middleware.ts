@@ -7,6 +7,7 @@ export default withAuth(
     const isAuth = !!token
     const pathname = req.nextUrl.pathname
 
+    // random comment
     // Protected routes that require authentication
     const protectedRoutes = ['/dashboard', '/app', '/workspace', '/billing']
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
