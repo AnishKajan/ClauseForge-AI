@@ -1,20 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Stripe from 'stripe'
-import { z } from 'zod'
+import { z } from "zod"
 
 const BodySchema = z.object({
-  priceId: z.string().optional(),
-  user: z.object({
-    id: z.string(),
-    email: z.string().email().optional(),
-  }).optional(),
+  priceId: z.string().min(1),
+  user: z
+    .object({
+      id: z.string().min(1),
+      email: z.string().email().optional(),
+    })
+    .optional(),
 })
+
+type Body = z.infer<typeof BodySchema>
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -25,8 +29,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const raw = (await request.json()) as unknown
-    const { user, priceId } = BodySchema.parse(raw)
+    const bodyUnknown = (await req.json()) as unknown
+    const { user, priceId } = BodySchema.parse(bodyUnknown)
+    
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
     if (!finalPriceId) {

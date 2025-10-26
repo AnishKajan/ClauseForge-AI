@@ -51,16 +51,35 @@ def make_engine(database_url: str, *, use_null_pool: bool | None = None):
         )
 
 
-# Create async engine with proper connection pooling
-engine = make_engine(settings.DATABASE_URL)
+# Lazy engine and session creation
+_engine: create_async_engine | None = None
+_SessionLocal: async_sessionmaker | None = None
 
-# Create session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,  # Manual control over flushing
-)
+def get_engine():
+    """Get or create the database engine"""
+    global _engine
+    if _engine is None:
+        _engine = make_engine(settings.DATABASE_URL)
+    return _engine
+
+def get_sessionmaker():
+    """Get or create the session maker"""
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = async_sessionmaker(
+            bind=get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autoflush=False,  # Manual control over flushing
+        )
+    return _SessionLocal
+
+# For backward compatibility - these will be called as functions now
+def engine():
+    return get_engine()
+
+def AsyncSessionLocal():
+    return get_sessionmaker()
 
 # Create declarative base
 Base = declarative_base()
@@ -68,7 +87,8 @@ Base = declarative_base()
 
 async def get_db() -> AsyncSession:
     """Dependency to get database session"""
-    async with AsyncSessionLocal() as session:
+    session_maker = get_sessionmaker()
+    async with session_maker() as session:
         try:
             yield session
         except Exception:
@@ -96,7 +116,7 @@ async def clear_org_context(session: AsyncSession):
 async def check_database_health() -> bool:
     """Check database connectivity and health"""
     try:
-        async with engine.begin() as conn:
+        async with get_engine().begin() as conn:
             # Test basic connectivity
             result = await conn.execute(text("SELECT 1"))
             if result.scalar() != 1:
@@ -116,7 +136,7 @@ async def check_database_health() -> bool:
 async def init_db():
     """Initialize database with extensions"""
     try:
-        async with engine.begin() as conn:
+        async with get_engine().begin() as conn:
             # Enable required extensions
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -132,7 +152,7 @@ async def init_db():
 
 async def close_db():
     """Close database connections"""
-    await engine.dispose()
+    await get_engine().dispose()
     logger.info("Database connections closed")
 
 
@@ -167,7 +187,8 @@ class DatabaseSession:
         self.session = None
     
     async def __aenter__(self) -> AsyncSession:
-        self.session = AsyncSessionLocal()
+        session_maker = get_sessionmaker()
+        self.session = session_maker()
         if self.org_id:
             await set_org_context(self.session, self.org_id)
         return self.session
@@ -183,7 +204,8 @@ class DatabaseSession:
 # Utility functions for testing
 async def create_test_session() -> AsyncSession:
     """Create a test database session"""
-    return AsyncSessionLocal()
+    session_maker = get_sessionmaker()
+    return session_maker()
 
 
 async def reset_database():
@@ -191,7 +213,7 @@ async def reset_database():
     if settings.ENVIRONMENT != "test":
         raise RuntimeError("Database reset only allowed in test environment")
     
-    async with engine.begin() as conn:
+    async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     

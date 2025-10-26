@@ -6,6 +6,15 @@ from pydantic_settings import BaseSettings
 from typing import Optional, List
 import os
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+if ENVIRONMENT == "test":
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+    SECRET_KEY = os.getenv("SECRET_KEY", "test-secret")
+else:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://lexiscan:password@localhost:5432/lexiscan")
+    SECRET_KEY = os.environ.get("SECRET_KEY", "change-me")
+
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -13,18 +22,18 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "LexiScan AI Contract Analyzer"
     VERSION: str = "0.1.0"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = ENVIRONMENT
     DEBUG: bool = True
     
     # API
     API_V1_STR: str = "/api"
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    SECRET_KEY: str = SECRET_KEY
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     BASE_URL: str = "http://localhost:8000"
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://lexiscan:password@localhost:5432/lexiscan"
+    DATABASE_URL: str = DATABASE_URL
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     
