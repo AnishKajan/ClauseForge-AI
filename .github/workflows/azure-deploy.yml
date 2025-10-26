@@ -68,9 +68,10 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key
           ENVIRONMENT: test
-          PYTHONPATH: ${{ github.workspace }}/backend
+          PYTHONPATH: .
         run: |
-          pytest
+          export PYTHONPATH=$PWD:$PYTHONPATH
+          pytest -v
       - name: Upload coverage to Codecov (optional)
         uses: codecov/codecov-action@v3
         continue-on-error: true

@@ -5,7 +5,7 @@ import Stripe from 'stripe'
 import { z } from "zod"
 
 const BodySchema = z.object({
-  priceId: z.string().min(1),
+  priceId: z.string().optional(),
   user: z
     .object({
       id: z.string().min(1),
