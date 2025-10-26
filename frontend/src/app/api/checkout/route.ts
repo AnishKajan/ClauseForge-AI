@@ -25,17 +25,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const json = await request.json()
-    const parsed = BodySchema.safeParse(json)
-    
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid request body', details: parsed.error.issues },
-        { status: 400 }
-      )
-    }
-
-    const { priceId, user } = parsed.data
+    const raw = (await request.json()) as unknown
+    const { user, priceId } = BodySchema.parse(raw)
     const finalPriceId = priceId || process.env.STRIPE_PRICE_PRO
 
     if (!finalPriceId) {
