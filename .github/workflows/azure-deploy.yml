@@ -188,8 +188,16 @@ jobs:
     needs: [frontend-test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: production
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Build and Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
@@ -197,9 +205,10 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: "frontend" # <— no leading slash
-          output_location: "out" # produced by `next export`
-          is_static_export: true # be explicit for Next export
+          app_location: "frontend"
+          output_location: "out"
+          is_static_export: true
           app_build_command: "npm ci && npm run build:static"
+          skip_api_build: true
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
