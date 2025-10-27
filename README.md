@@ -45,27 +45,19 @@ An enterprise-grade AI platform that helps lawyers, compliance officers, and bus
 | Docker | Latest | ✅ |
 | Docker Compose | v2+ | ✅ |
 
-### Architecture Overview
+### Tech Stack Architecture
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Next.js UI   │────│   FastAPI API   │────│  PostgreSQL +   │
-│   (Frontend)    │    │   (Backend)     │    │   pgvector      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │              ┌─────────────────┐              │
-         │              │   AWS Services  │              │
-         │              │  S3 + SQS +     │              │
-         │              │   Textract      │              │
-         │              └─────────────────┘              │
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │  AI Services    │
-                    │ Claude + OpenAI │
-                    └─────────────────┘
-```
+![ClauseForge AI Tech Stack](frontend/public/ClauseForge-AI%20TechStack.jpg)
+
+Our comprehensive tech stack includes:
+- **Frontend**: Next.js with TypeScript and Tailwind CSS
+- **Backend**: FastAPI with Python
+- **Database**: PostgreSQL with pgvector for semantic search
+- **AI Services**: Claude API (LLM) and LangChain for RAG
+- **Cloud Infrastructure**: Azure services for hosting and storage
+- **Authentication**: Auth0 with Microsoft SSO integration
+- **Payments**: Stripe API for billing management
+- **CI/CD**: GitHub Actions for automated deployment
 
 ## 📋 Implementation Plan
 
